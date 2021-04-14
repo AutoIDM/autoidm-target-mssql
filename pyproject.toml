@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "target-mssql"
+version = "0.0.1"
+description = "`target-mssql` is Singer tap for MSSQL, built with the Singer SDK."
+authors = ["Derek Visch"]
+license = "Apache 2.0"
+
+[tool.poetry.dependencies]
+python = "<3.9,>=3.6"
+requests = "^2.25.1"
+singer-sdk = "^0.1.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.1.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+# CLI declaration
+target-mssql = 'target_mssql.target:cli'
