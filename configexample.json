@@ -1,0 +1,7 @@
+{
+  "host": "localhost"
+  "port": 1521,
+  "database": "temp_db",
+  "user": "sa",
+  "password": "Password"
+}
