@@ -1,9 +1,8 @@
-Before jumping into this target I wanted to take a bit of time to think out the problem space of Target-MSSQL
-
-#Diagram
+# Diagram
 ![Outdated Diagram](architecture.png)
 Diagrams Link https://drive.google.com/file/d/1FPDIOC4udfPfocEYUrAgC0cteTzlzzgD/view?usp=sharing
 
+# Architecture
 From a high level we need to parse SCHEMA, RECORD, and STATE messages (there's others as well but let's just focus on this for now.)
 
 1. SCHEMA messages should look in the corresponding MSSQL table and see if the table already matches that schema provided. If not choose a resolution strategy, execute it, and move on
