@@ -1,5 +1,6 @@
 # Diagram
 ![Outdated Diagram](architecture.png)
+
 Diagrams Link https://drive.google.com/file/d/1FPDIOC4udfPfocEYUrAgC0cteTzlzzgD/view?usp=sharing
 
 # Architecture
