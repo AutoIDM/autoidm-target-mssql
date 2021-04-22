@@ -37,7 +37,7 @@ class MSSQLStream(Stream):
     #TODO Need be using named parameters for SQL to avoid potential injection, and to be clean
     #TODO temp needs to be dealth with
     #TODO messy 
-    sql = f"IF NOT EXISTS (select * from sys.tables t join sys.schemas s on (t.schema_id = s.schema_id) where s.name = 'dbo' and t.name = '{table_name}_temp') CREATE TABLE {table_name}_temp ("
+    sql = f"DROP TABLE IF EXISTS {table_name}_temp CREATE TABLE {table_name}_temp ("
     #TODO can you assume only 1 primary key?
     pk_type=self.ddl_json_to_mssqlmapping(self.schema["properties"]["id"])
     pk_type=pk_type.replace("MAX","450") #TODO hacky hacky
