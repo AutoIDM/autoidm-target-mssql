@@ -6,10 +6,8 @@ from .streams import MSSQLStream
 STREAM_TYPES = [
   MSSQLStream,
 ]  
-streams = [] 
 class TargetMSSQL(Target):
   """MSSQL tap class."""
-    
   name = "target-mssql"
   # TODO: Update this section with the actual config values you expect:
   #config_jsonschema = PropertiesList(
@@ -22,7 +20,7 @@ class TargetMSSQL(Target):
 
   #TODO not a fan of streams not being required by the BaseTarget class here, as it's referenced in the class
   def streams(self):
-    return self.streams 
+    return self.streamslist 
     #return [stream_class(target=self) for stream_class in STREAM_TYPES]
   
   #TODO this is a silly way to do this
