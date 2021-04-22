@@ -1,4 +1,8 @@
 configexample.json
+
+#vim
+*.swp
+
 # Secrets and internal config files
 .secrets/*
 

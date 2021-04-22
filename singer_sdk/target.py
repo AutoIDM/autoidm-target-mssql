@@ -25,13 +25,14 @@ class Target:
         self.streams_in = {}
 
     def get_stream(self, name, schema, key_properties):
-        try:
-            stream = next(stream for stream in self.streams() if stream.name == name)
-        except StopIteration:
-            raise Exception("Unsupported stream {}".format(name))
+        #try:
+        #    stream = next(stream for stream in self.streams() if stream.name == name)
+        #except StopIteration:
+        #    raise Exception("Unsupported stream {}".format(name))
         #TODO: This is a really silly way to do this
-        except TypeError:
-          stream = self.streamclass(target=self, name=name, schema=schema, key_properties=key_properties)
+        #except TypeError:
+        #TODO Deal with Existing streams at some point
+        stream = self.streamclass(target=self, name=name, schema=schema, key_properties=key_properties)
         stream.schema_in = schema
         stream.key_properties_in = key_properties
         return stream
@@ -41,6 +42,7 @@ class Target:
 
     def process_schema_message(self, message):
         stream = message["stream"]
+        
         self.streams_in[stream] = self.get_stream(
             stream, message["schema"], message["key_properties"]
         )

@@ -4,6 +4,7 @@ import singer
 logger = singer.get_logger()
 
 class Stream:
+    #TODO as of right now without a schema things will fail
     def __init__(self, target, name=None, schema=None, key_properties=None):
         self.target = target
         if name:
