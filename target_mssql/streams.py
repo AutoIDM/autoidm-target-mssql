@@ -2,14 +2,21 @@
 from pathlib import Path
 from typing import Any, Dict, Optional, Union, List, Iterable
 from singer_sdk.stream import Stream
-
+import pymssql
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 
+#TODO: Use logging 
 #TODO: Opening Database conneciton on a per stream basis seems like a no-go
 class MSSQLStream(Stream):
+  
   """Stream class for MSSQL streams."""
-  def __init__(self, *args, **kwargs):
+  def __init__(self, conn, *args, **kwargs):
     super().__init__(*args, **kwargs)
+    self.conn = conn
+    #TODO: Turn off autocommit and deal with batching
+    self.conn.autocommit(True)
+    #TODO Think about the right way to handle this when restructuring classes re https://pymssql.readthedocs.io/en/stable/pymssql_examples.html#important-note-about-cursors
+    self.cursor = self.conn.cursor() 
     self.table_handler()
 
   def table_handler(self):
@@ -19,25 +26,28 @@ class MSSQLStream(Stream):
     
     ddl = self.schema_to_temp_table_ddl(self.schema)
     self.sql_runner(ddl)
-    print("would have created table")
   
   #TODO error handling. If there's not a key_propertie what kind of failure do we want?
   def schema_to_temp_table_ddl(self, schema) -> str:
     #TODO Can't assume this is an INT always
-    primay_key= self.key_properties[0]
+    primary_key= self.key_properties[0]
     table_name = self.name
     columns_types = {}
 
     #TODO Need be using named parameters for SQL to avoid potential injection, and to be clean
-    sql = f"CREATE TABLE {table_name}_temp ("
+    #TODO temp needs to be dealth with
+    #TODO messy 
+    sql = f"IF NOT EXISTS (select * from sys.tables t join sys.schemas s on (t.schema_id = s.schema_id) where s.name = 'dbo' and t.name = '{table_name}_temp') CREATE TABLE {table_name}_temp ("
     #TODO can you assume only 1 primary key?
-    pk_type=self.json_to_mssqlmapping(self.schema["properties"]["id"])
-    sql += f"{primay_key} {pk_type} NOT NULL PRIMARY KEY"
+    pk_type=self.ddl_json_to_mssqlmapping(self.schema["properties"]["id"])
+    pk_type=pk_type.replace("MAX","450") #TODO hacky hacky
+    sql += f"{primary_key} {pk_type} NOT NULL PRIMARY KEY"
     properties=self.schema["properties"]
     print(properties)
     json_to_column_type={}
+    properties.pop(primary_key, None)
     for name, shape in properties.items():
-      mssqltype=self.json_to_mssqlmapping(shape)
+      mssqltype=self.ddl_json_to_mssqlmapping(shape)
       sql+= f", {name} {mssqltype}"
       #print(self.json_to_mssqlmapping(shape))
     
@@ -51,12 +61,12 @@ class MSSQLStream(Stream):
    #TODO clean up / make methods like this static
    #TODO what happens with multiple types
    #TODO what happens if the string type I want isn't first
-  def json_to_mssqlmapping(self, shape:dict) -> str:
+  def ddl_json_to_mssqlmapping(self, shape:dict) -> str:
     jsontype : str = shape["type"][0]
     mssqltype : str = None
     if (jsontype=="string"): mssqltype = "VARCHAR(MAX)"
     elif (jsontype=="number"): mssqltype = "INT" #TODO is int always the right choice?
-    elif (jsontype=="boolean"): mssqltype = "BOOL"
+    elif (jsontype=="boolean"): mssqltype = "BIT"
      #not tested
     elif (jsontype=="null"): raise NotImplementedError
     elif (jsontype=="array"): raise NotImplementedError
@@ -66,7 +76,7 @@ class MSSQLStream(Stream):
     return mssqltype
   
   def data_json_to_mssqlmapping(self, data) -> str:
-    if(type(data) == str): returnvalue = f"\"{data}\""
+    if(type(data) == str): returnvalue = f"'{data}'"
     #Could have imported NoneType instead but meh
     elif(data is None): returnvalue = "NULL"
     #TODO clean this up a bit, expressions in python?
@@ -87,11 +97,12 @@ class MSSQLStream(Stream):
     for rec in data.values():
       canonical_data.append(self.data_json_to_mssqlmapping(rec))
     datalist = ",".join(canonical_data)
-    sql += f"VALUES ({datalist})" 
+    sql += f" VALUES ({datalist})" 
     return sql
 
   def sql_runner(self, sql):
-    print(f"Would have ran: {sql}")
+    print(f"Running SQL: {sql}")
+    self.cursor.execute(sql)
 
   #def tempdb_to_actualdb_sql(self, temp_db_name, actual_db_name)
   #def tempdb_drop_sql(self, tempdb_name)

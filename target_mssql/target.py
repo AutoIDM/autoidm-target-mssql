@@ -3,12 +3,24 @@ from pathlib import Path
 from typing import List
 from singer_sdk.target import Target
 from .streams import MSSQLStream
-STREAM_TYPES = [
-  MSSQLStream,
-]  
+import pymssql
+
+#STREAM_TYPES = [
+#  MSSQLStream,
+#]  
 class TargetMSSQL(Target):
   """MSSQL tap class."""
   name = "target-mssql"
+
+  def __init__(self, config, *args, **kwargs):
+    super().__init__(config, *args, **kwargs)
+    print(self.config)
+    assert self.config["host"]
+    self.conn = pymssql.connect(server=self.config["host"], 
+                                user=self.config["user"],
+                                password=self.config["password"],
+                                database=self.config["database"],
+                                port=self.config["port"])
   # TODO: Update this section with the actual config values you expect:
   #config_jsonschema = PropertiesList(
   #    Property("host", StringType, required=True),
@@ -25,7 +37,7 @@ class TargetMSSQL(Target):
   
   #TODO this is a silly way to do this
   def streamclass(self, *args, **kwargs):
-    return MSSQLStream(*args, **kwargs)
+    return MSSQLStream(conn=self.conn, *args, **kwargs)
 # CLI Execution:
 
 cli = TargetMSSQL.cli()
