@@ -1,6 +1,6 @@
 {
   "host": "localhost",
-  "port": 1521,
+  "port": 1433,
   "database": "temp_db",
   "user": "sa",
   "password": "Password"
