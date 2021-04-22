@@ -1,57 +1,43 @@
 """MSSQL target class."""
-
 from pathlib import Path
 from typing import List
+from singer_sdk.target import Target
+from .streams import MSSQLStream
+import pymssql
 
-from singer_sdk import Tap, Stream
-from singer_sdk.typing import (
-    ArrayType,
-    BooleanType,
-    DateTimeType,
-    IntegerType,
-    NumberType,
-    ObjectType,
-    PropertiesList,
-    Property,
-    StringType,
-)
+#STREAM_TYPES = [
+#  MSSQLStream,
+#]  
+class TargetMSSQL(Target):
+  """MSSQL tap class."""
+  name = "target-mssql"
 
-# TODO: Import your custom stream types here:
-from target_mssql.streams import (
-    MSSQLStream,
-    UsersStream,
-    GroupsStream,
-)
+  def __init__(self, config, *args, **kwargs):
+    super().__init__(config, *args, **kwargs)
+    print(self.config)
+    assert self.config["host"]
+    self.conn = pymssql.connect(server=self.config["host"], 
+                                user=self.config["user"],
+                                password=self.config["password"],
+                                database=self.config["database"],
+                                port=self.config["port"])
+  # TODO: Update this section with the actual config values you expect:
+  #config_jsonschema = PropertiesList(
+  #    Property("host", StringType, required=True),
+  #    Property("user", StringType, required=True),
+  #    Property("port", IntegerType, required=False, default=1521),
+  #    Property("password", StringType, required=True),
+  #    Property("database", StringType, required=True),
+  #).to_dict()
 
-
-# TODO: Compile a list of custom stream types here
-#       OR rewrite discover_streams() below with your custom logic.
-STREAM_TYPES = [
-    UsersStream,
-    GroupsStream,
-]
-
-# TODO: Update from Tap to Target
-class TargetMSSQL(Tap):
-    """MSSQL tap class."""
-
-    name = "target-mssql"
-
-    # TODO: Update this section with the actual config values you expect:
-    config_jsonschema = PropertiesList(
-        Property("host", StringType, required=True),
-        Property("user", StringType, required=True),
-        Property("port", IntegerType, required=False, default=1521),
-        Property("password", StringType, required=True),
-        Property("database", StringType, required=True),
-    ).to_dict()
-
-
-    def discover_streams(self) -> List[Stream]:
-        """Return a list of discovered streams."""
-        return [stream_class(tap=self) for stream_class in STREAM_TYPES]
-
-
+  #TODO not a fan of streams not being required by the BaseTarget class here, as it's referenced in the class
+  def streams(self):
+    return self.streamslist 
+    #return [stream_class(target=self) for stream_class in STREAM_TYPES]
+  
+  #TODO this is a silly way to do this
+  def streamclass(self, *args, **kwargs):
+    return MSSQLStream(conn=self.conn, *args, **kwargs)
 # CLI Execution:
 
-cli = TargetMSSQL.cli
+cli = TargetMSSQL.cli()
