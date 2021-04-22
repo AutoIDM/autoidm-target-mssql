@@ -58,14 +58,37 @@ class MSSQLStream(Stream):
     elif (jsontype=="number"): mssqltype = "INT" #TODO is int always the right choice?
     elif (jsontype=="boolean"): mssqltype = "BOOL"
      #not tested
-    elif (jsontype=="null"): raise NotImplemented
-    elif (jsontype=="array"): raise NotImplemented
-    elif (jsontype=="object"): raise NotImplemented
-    else: raise NotImplemented
+    elif (jsontype=="null"): raise NotImplementedError
+    elif (jsontype=="array"): raise NotImplementedError
+    elif (jsontype=="object"): raise NotImplementedError
+    else: raise NotImplementedError
      
     return mssqltype
-  #def record_to_dml(self, tablename) -> str:
-  #  return None
+  
+  def data_json_to_mssqlmapping(self, data) -> str:
+    if(type(data) == str): returnvalue = f"\"{data}\""
+    #Could have imported NoneType instead but meh
+    elif(data is None): returnvalue = "NULL"
+    #TODO clean this up a bit, expressions in python?
+    elif(type(data) == bool): 
+      if(data): returnvalue = "1" 
+      else: returnvalue = "0"
+    elif(type(data) == int): returnvalue = f"{data}"
+    else: raise NotImplementedError(f"Data Type: {data}")
+    return returnvalue 
+     
+  #TODO when this is batched how do you make sure the column ordering stays the same (data class probs)
+  #Columns is seperate due to data not necessairly having all of the correct columns
+  def record_to_dml(self, table_name:str, data:dict) -> str:
+    column_list=",".join(data.keys())
+    sql = f"INSERT INTO {table_name} ({column_list})"
+    #TODO can make this more pythonic using lambda, list comprehension, or some collections schtuff
+    canonical_data = []
+    for rec in data.values():
+      canonical_data.append(self.data_json_to_mssqlmapping(rec))
+    datalist = ",".join(canonical_data)
+    sql += f"VALUES ({datalist})" 
+    return sql
 
   def sql_runner(self, sql):
     print(f"Would have ran: {sql}")
@@ -76,12 +99,12 @@ class MSSQLStream(Stream):
   #def complete_transaction(self)
 
   def persist_record(self, record):
-    return
     #print(f"would have persisted: {record}")
     #print(f"name: {self.name} , key_properties: {self.key_properties}, schema: {self.schema}")
-    #dml = record_to_dml(record)    
+    #TODO shouldn't manually generate the table name here
+    dml = self.record_to_dml(table_name=f"{self.name}_temp",data=record)    
     #print(dml)
-    #sql_runner(dml)
+    self.sql_runner(dml)
   
   #def flush_stream(self)
   #  sql = tempdb_to_actualdb_sql(temp_db_name, actual_db_name)
