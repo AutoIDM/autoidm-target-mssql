@@ -62,7 +62,9 @@ class MSSQLStream(Stream):
    #TODO what happens with multiple types
    #TODO what happens if the string type I want isn't first
   def ddl_json_to_mssqlmapping(self, shape:dict) -> str:
-    jsontype : str = shape["type"][0]
+    #TODO this is not solid, need to harden
+    if (type(shape["type"]) == str): jsontype = shape["type"]
+    else: jsontype = shape["type"][0]
     mssqltype : str = None
     if (jsontype=="string"): mssqltype = "VARCHAR(MAX)"
     elif (jsontype=="number"): mssqltype = "INT" #TODO is int always the right choice?
@@ -71,7 +73,7 @@ class MSSQLStream(Stream):
     elif (jsontype=="null"): raise NotImplementedError("Can't set columns as null in MSSQL")
     elif (jsontype=="array"): raise NotImplementedError("Currently haven't implemented dealing with arrays")
     elif (jsontype=="object"): raise NotImplementedError("Currently haven't implemented dealing with objects")
-    else: raise NotImplementedError(f "Haven't implemented dealing with this type of data. jsontype: {jsontype}") 
+    else: raise NotImplementedError(f"Haven't implemented dealing with this type of data. jsontype: {jsontype}") 
      
     return mssqltype
   
