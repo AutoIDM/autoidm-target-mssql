@@ -39,7 +39,7 @@ class MSSQLStream(Stream):
     #TODO messy 
     sql = f"DROP TABLE IF EXISTS {table_name}_temp CREATE TABLE {table_name}_temp ("
     #TODO can you assume only 1 primary key?
-    pk_type=self.ddl_json_to_mssqlmapping(self.schema["properties"]["id"])
+    pk_type=self.ddl_json_to_mssqlmapping(self.schema["properties"][primary_key])
     pk_type=pk_type.replace("MAX","450") #TODO hacky hacky
     sql += f"{primary_key} {pk_type} NOT NULL PRIMARY KEY"
     properties=self.schema["properties"]
