@@ -68,6 +68,7 @@ class MSSQLStream(Stream):
     mssqltype : str = None
     if (jsontype=="string"): mssqltype = "VARCHAR(MAX)"
     elif (jsontype=="number"): mssqltype = "INT" #TODO is int always the right choice?
+    elif (jsontype=="integer"): mssqltype = "INT" #TODO is int always the right choice?
     elif (jsontype=="boolean"): mssqltype = "BIT"
      #not tested
     elif (jsontype=="null"): raise NotImplementedError("Can't set columns as null in MSSQL")
