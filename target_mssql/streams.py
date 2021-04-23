@@ -68,10 +68,10 @@ class MSSQLStream(Stream):
     elif (jsontype=="number"): mssqltype = "INT" #TODO is int always the right choice?
     elif (jsontype=="boolean"): mssqltype = "BIT"
      #not tested
-    elif (jsontype=="null"): raise NotImplementedError
-    elif (jsontype=="array"): raise NotImplementedError
-    elif (jsontype=="object"): raise NotImplementedError
-    else: raise NotImplementedError
+    elif (jsontype=="null"): raise NotImplementedError("Can't set columns as null in MSSQL")
+    elif (jsontype=="array"): raise NotImplementedError("Currently haven't implemented dealing with arrays")
+    elif (jsontype=="object"): raise NotImplementedError("Currently haven't implemented dealing with objects")
+    else: raise NotImplementedError(f "Haven't implemented dealing with this type of data. jsontype: {jsontype}") 
      
     return mssqltype
   
