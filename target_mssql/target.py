@@ -14,7 +14,6 @@ class TargetMSSQL(Target):
 
   def __init__(self, config, *args, **kwargs):
     super().__init__(config, *args, **kwargs)
-    print(self.config)
     assert self.config["host"]
     self.conn = pymssql.connect(server=self.config["host"], 
                                 user=self.config["user"],
