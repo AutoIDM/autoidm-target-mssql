@@ -1,7 +1,7 @@
 """Stream class for target-mssql."""
 from pathlib import Path
 from typing import Any, Dict, Optional, Union, List, Iterable
-from singer_sdk.stream import Stream
+from .singer_sdk.stream import Stream
 import pymssql
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 
