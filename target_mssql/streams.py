@@ -63,17 +63,23 @@ class MSSQLStream(Stream):
    #TODO what happens if the string type I want isn't first
   def ddl_json_to_mssqlmapping(self, shape:dict) -> str:
     #TODO this is not solid, need to harden
-    if (type(shape["type"]) == str): jsontype = shape["type"]
-    else: jsontype = shape["type"][0]
+    #if (type(shape["type"]) == str): jsontype = shape["type"]
+    #TODO need to prioritize which type first
+    #else: 
+    jsontype = shape["type"]
+    #  jsontype.sort()
+    #  jsontype.reverse()
+    #  jsontype=jsontype[0]
+    #  print(jsontype)
     mssqltype : str = None
-    if (jsontype=="string"): mssqltype = "VARCHAR(MAX)"
-    elif (jsontype=="number"): mssqltype = "INT" #TODO is int always the right choice?
-    elif (jsontype=="integer"): mssqltype = "INT" #TODO is int always the right choice?
-    elif (jsontype=="boolean"): mssqltype = "BIT"
+    if ("string" in jsontype): mssqltype = "VARCHAR(MAX)"
+    elif ("number" in jsontype): mssqltype = "INT" #TODO is int always the right choice?
+    elif ("integer" in jsontype): mssqltype = "INT" #TODO is int always the right choice?
+    elif ("boolean" in jsontype): mssqltype = "BIT"
      #not tested
-    elif (jsontype=="null"): raise NotImplementedError("Can't set columns as null in MSSQL")
-    elif (jsontype=="array"): raise NotImplementedError("Currently haven't implemented dealing with arrays")
-    elif (jsontype=="object"): raise NotImplementedError("Currently haven't implemented dealing with objects")
+    elif ("null" in jsontype): raise NotImplementedError("Can't set columns as null in MSSQL")
+    elif ("array" in jsontype): raise NotImplementedError("Currently haven't implemented dealing with arrays")
+    elif ("object" in jsontype): raise NotImplementedError("Currently haven't implemented dealing with objects")
     else: raise NotImplementedError(f"Haven't implemented dealing with this type of data. jsontype: {jsontype}") 
      
     return mssqltype
