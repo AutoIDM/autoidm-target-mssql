@@ -48,6 +48,8 @@ class MSSQLStream(Stream):
     properties.pop(primary_key, None)
     for name, shape in properties.items():
       mssqltype=self.ddl_json_to_mssqlmapping(shape)
+      if (mssqltype is None): continue #Empty Schemas
+      mssqltype=self.ddl_json_to_mssqlmapping(shape)
       sql+= f", {name} {mssqltype}"
       #print(self.json_to_mssqlmapping(shape))
     
@@ -66,6 +68,7 @@ class MSSQLStream(Stream):
     #if (type(shape["type"]) == str): jsontype = shape["type"]
     #TODO need to prioritize which type first
     #else: 
+    if ("type" not in shape): return None 
     jsontype = shape["type"]
     #  jsontype.sort()
     #  jsontype.reverse()
