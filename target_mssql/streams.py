@@ -35,8 +35,9 @@ class MSSQLStream(Stream):
     columns_types = {}
     
     #TODO better system for detecting tables
-    table_name = table_name.replace("-","_")
     
+    table_name = table_name.replace("-","_")
+    self.name = table_name
     #TODO Need be using named parameters for SQL to avoid potential injection, and to be clean
     #TODO temp needs to be dealth with
     #TODO messy 
