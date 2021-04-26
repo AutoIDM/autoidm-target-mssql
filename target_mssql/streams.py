@@ -94,7 +94,9 @@ class MSSQLStream(Stream):
     return mssqltype
   
   def data_json_to_mssqlmapping(self, data) -> str:
-    if(type(data) == str): returnvalue = f"'{data.replace('\'','\'\'')}'" #Quotes need to be escape with a quote in SQL
+    if(type(data) == str): 
+      data = data.replace('\'','\'\'') #Quotes need to be escape with a quote in SQL
+      returnvalue = f"{data}" #TODO do we really need f strings for these returns for each data type? 
     #Could have imported NoneType instead but meh
     elif(data is None): returnvalue = "NULL"
     #TODO clean this up a bit, expressions in python?
