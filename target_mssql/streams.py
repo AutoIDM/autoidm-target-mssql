@@ -101,7 +101,7 @@ class MSSQLStream(Stream):
       if(data): returnvalue = "1" 
       else: returnvalue = "0"
     elif(type(data) == int): returnvalue = f"{data}"
-    else: raise NotImplementedError(f"Data Type: {data}")
+    else: raise NotImplementedError(f"Data Type: {type(data)}, Data: {data}")
     return returnvalue 
      
   #TODO when this is batched how do you make sure the column ordering stays the same (data class probs)
