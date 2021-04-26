@@ -94,7 +94,7 @@ class MSSQLStream(Stream):
     return mssqltype
   
   def data_json_to_mssqlmapping(self, data) -> str:
-    if(type(data) == str): returnvalue = f"'{data}'"
+    if(type(data) == str): returnvalue = f"'{data.replace('\'','\'\'')}'" #Quotes need to be escape with a quote in SQL
     #Could have imported NoneType instead but meh
     elif(data is None): returnvalue = "NULL"
     #TODO clean this up a bit, expressions in python?
