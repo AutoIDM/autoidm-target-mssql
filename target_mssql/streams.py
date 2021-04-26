@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union, List, Iterable
 from .singer_sdk.stream import Stream
 import pymssql
+from decimal import Decimal
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 
 #TODO: Use logging 
@@ -101,6 +102,7 @@ class MSSQLStream(Stream):
       if(data): returnvalue = "1" 
       else: returnvalue = "0"
     elif(type(data) == int): returnvalue = f"{data}"
+    elif(type(data) == decimal.Decimal): returnvalue = f"{data}"
     else: raise NotImplementedError(f"Data Type: {type(data)}, Data: {data}")
     return returnvalue 
      
