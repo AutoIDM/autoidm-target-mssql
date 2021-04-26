@@ -102,7 +102,7 @@ class MSSQLStream(Stream):
       if(data): returnvalue = "1" 
       else: returnvalue = "0"
     elif(type(data) == int): returnvalue = f"{data}"
-    elif(type(data) == decimal.Decimal): returnvalue = f"{data}"
+    elif(type(data) == Decimal): returnvalue = f"{data}"
     else: raise NotImplementedError(f"Data Type: {type(data)}, Data: {data}")
     return returnvalue 
      
