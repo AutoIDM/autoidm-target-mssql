@@ -57,7 +57,7 @@ class MSSQLStream(Stream):
       if (mssqltype is None): continue #Empty Schemas
       mssqltype=self.ddl_json_to_mssqlmapping(shape)
       sql+= f", {name} {mssqltype}"
-      #print(self.json_to_mssqlmapping(shape))
+      #print(self.json_to_mssqlmapping(shape)
     
     #CREATE TABLE {stream_name}_temp (
     #  ID int NOT NULL PRIMARY KEY,
@@ -82,8 +82,8 @@ class MSSQLStream(Stream):
     #  print(jsontype)
     mssqltype : str = None
     if ("string" in jsontype): mssqltype = "VARCHAR(MAX)"
-    elif ("number" in jsontype): mssqltype = "INT" #TODO is int always the right choice?
-    elif ("integer" in jsontype): mssqltype = "INT" #TODO is int always the right choice?
+    elif ("number" in jsontype): mssqltype = "BIGINT" #TODO is int always the right choice?
+    elif ("integer" in jsontype): mssqltype = "BIGINT" #TODO is int always the right choice?
     elif ("boolean" in jsontype): mssqltype = "BIT"
      #not tested
     elif ("null" in jsontype): raise NotImplementedError("Can't set columns as null in MSSQL")
