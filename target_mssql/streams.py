@@ -11,14 +11,22 @@ SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 class MSSQLStream(Stream):
   
   """Stream class for MSSQL streams."""
-  def __init__(self, conn, *args, **kwargs):
+  def __init__(self, conn, schema_name, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.conn = conn
     #TODO: Turn off autocommit and deal with batching
     self.conn.autocommit(True)
     #TODO Think about the right way to handle this when restructuring classes re https://pymssql.readthedocs.io/en/stable/pymssql_examples.html#important-note-about-cursors
     self.cursor = self.conn.cursor() 
+    self.full_table_name = self.generate_full_table_name(self.name, schema_name)
     self.table_handler()
+
+  def generate_full_table_name(self, streamname, schema_name):
+    table_name = streamname
+    table_name = streamname.replace("-","_")
+    if schema_name: table_name = schema_name + "." + table_name
+    return table_name
+
 
   def table_handler(self):
     #TODO it is not safe to assume you can truncate a table in this situation
@@ -32,17 +40,13 @@ class MSSQLStream(Stream):
   def schema_to_temp_table_ddl(self, schema) -> str:
     #TODO Can't assume this is an INT always
     primary_key= self.key_properties[0]
-    table_name = self.name
+    table_name = self.name 
     columns_types = {}
     
     #TODO better system for detecting tables
     
-    table_name = table_name.replace("-","_")
-    self.name = table_name
     #TODO Need be using named parameters for SQL to avoid potential injection, and to be clean
-    #TODO temp needs to be dealth with
-    #TODO messy 
-    sql = f"DROP TABLE IF EXISTS {table_name}_temp CREATE TABLE {table_name}_temp ("
+    sql = f"DROP TABLE IF EXISTS {self.full_table_name} CREATE TABLE {self.full_table_name}("
     
     #TODO can you assume only 1 primary key?
     pk_type=self.ddl_json_to_mssqlmapping(self.schema["properties"][primary_key])
@@ -134,7 +138,7 @@ class MSSQLStream(Stream):
     #print(f"would have persisted: {record}")
     #print(f"name: {self.name} , key_properties: {self.key_properties}, schema: {self.schema}")
     #TODO shouldn't manually generate the table name here
-    dml = self.record_to_dml(table_name=f"{self.name}_temp",data=record)    
+    dml = self.record_to_dml(table_name=self.full_table_name,data=record)    
     #print(dml)
     self.sql_runner(dml)
   

@@ -16,7 +16,12 @@ pipx install target-mssql
 
 ### Accepted Config Options
 
-- [ ] `Developer TODO:` Provide a list of config options accepted by the tap.
+host: Hostname (example: localhost)
+port: example: 1433
+database:
+user:
+password:
+schema (Optional): will default to whatever the user's default schema is set to if this isn't set
 
 A full list of supported settings and capabilities for this
 tap is available by running:

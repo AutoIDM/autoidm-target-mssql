@@ -36,7 +36,8 @@ class TargetMSSQL(Target):
   
   #TODO this is a silly way to do this
   def streamclass(self, *args, **kwargs):
-    return MSSQLStream(conn=self.conn, *args, **kwargs)
+    schema=self.config.get("schema")
+    return MSSQLStream(conn=self.conn, schema_name=schema, *args, **kwargs)
 # CLI Execution:
 
 cli = TargetMSSQL.cli()
