@@ -36,37 +36,42 @@ class MSSQLStream(Stream):
     ddl = self.schema_to_temp_table_ddl(self.schema)
     self.sql_runner(ddl)
   
-  #TODO error handling. If there's not a key_propertie what kind of failure do we want?
   def schema_to_temp_table_ddl(self, schema) -> str:
-    #TODO Can't assume this is an INT always
-    primary_key= self.key_properties[0]
-    table_name = self.name 
-    columns_types = {}
+    primary_key=None
+    if (self.key_properties): primary_key = self.key_properties[0] 
+    else: primary_key=None
+
+    properties=self.schema["properties"]
     
     #TODO better system for detecting tables
     
     #TODO Need be using named parameters for SQL to avoid potential injection, and to be clean
     sql = f"DROP TABLE IF EXISTS {self.full_table_name} CREATE TABLE {self.full_table_name}("
-    
+   
+    #Key Properties
     #TODO can you assume only 1 primary key?
-    pk_type=self.ddl_json_to_mssqlmapping(self.schema["properties"][primary_key])
-    pk_type=pk_type.replace("MAX","450") #TODO hacky hacky
-    sql += f"{primary_key} {pk_type} NOT NULL PRIMARY KEY"
-    properties=self.schema["properties"]
-    print(properties)
-    json_to_column_type={}
-    properties.pop(primary_key, None)
+    if (primary_key):
+      pk_type=self.ddl_json_to_mssqlmapping(self.schema["properties"][primary_key])
+      #TODO Can't assume this is an INT always
+      #TODO 450 is silly
+      pk_type=pk_type.replace("MAX","450") #TODO hacky hacky
+      sql += f"{primary_key} {pk_type} NOT NULL PRIMARY KEY"
+      properties.pop(primary_key, None) #Don't add the primary key to our DDL again
+
+    
+    #Loop through all properties of stream to add them to our DDL
+    first=True
     for name, shape in properties.items():
       mssqltype=self.ddl_json_to_mssqlmapping(shape)
       if (mssqltype is None): continue #Empty Schemas
       mssqltype=self.ddl_json_to_mssqlmapping(shape)
-      sql+= f", {name} {mssqltype}"
-      #print(self.json_to_mssqlmapping(shape)
+      if(first): 
+        sql+= f" {name} {mssqltype}"
+        first=False
+      else: 
+        sql+= f", {name} {mssqltype}"
+
     
-    #CREATE TABLE {stream_name}_temp (
-    #  ID int NOT NULL PRIMARY KEY,
-    #  displayName varchar(max),
-    #  }
     sql += ");"
     return sql
   
