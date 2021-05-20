@@ -1,0 +1,4 @@
+{"type": "SCHEMA", "stream": "things", "schema": {"type": "object", "properties": {"thing_id": {"type": "string"}, "name": {"type": "string"}, "song_rating": {"type": "string"}}}, "key_properties": ["thing_id"]}
+{"type": "RECORD", "stream": "things", "record": {"thing_id": "1", "name": "Led Zeppelin", "song_rating": "10"}}
+{"type": "RECORD", "stream": "things", "record": {"thing_id": "2", "name": "Justin Beiber", "song_rating": "0 "}}
+{"type": "STATE", "value": {}}

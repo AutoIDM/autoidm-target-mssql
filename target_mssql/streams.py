@@ -38,8 +38,11 @@ class MSSQLStream(Stream):
   
   def schema_to_temp_table_ddl(self, schema) -> str:
     primary_key=None
-    if (self.key_properties): primary_key = self.key_properties[0] 
-    else: primary_key=None
+    try:
+      if(self.key_properties[0]):
+          primary_key = self.key_properties[0]
+    except AttributeError:
+      primary_key=None
 
     properties=self.schema["properties"]
     
@@ -55,7 +58,7 @@ class MSSQLStream(Stream):
       #TODO Can't assume this is an INT always
       #TODO 450 is silly
       pk_type=pk_type.replace("MAX","450") #TODO hacky hacky
-      sql += f"{primary_key} {pk_type} NOT NULL PRIMARY KEY"
+      sql += f"{primary_key} {pk_type} NOT NULL PRIMARY KEY,"
       properties.pop(primary_key, None) #Don't add the primary key to our DDL again
 
     
