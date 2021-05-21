@@ -27,16 +27,16 @@ class MSSQLStream(Stream):
     if schema_name: table_name = schema_name + "." + table_name
     return table_name
 
-
+  #TODO this method seems needless, should probably just call methods directly
   def table_handler(self):
     #TODO it is not safe to assume you can truncate a table in this situation
     
     #TODO How do we know all of the data is through and we are ready to drop and merge data into the table?
     
-    ddl = self.schema_to_temp_table_ddl(self.schema)
+    ddl = self.schema_to_temp_table_ddl(self.schema, self.full_table_name+"_temp")
     self.sql_runner(ddl)
   
-  def schema_to_temp_table_ddl(self, schema) -> str:
+  def schema_to_temp_table_ddl(self, schema, table_name) -> str:
     primary_key=None
     try:
       if(self.key_properties[0]):
@@ -49,7 +49,7 @@ class MSSQLStream(Stream):
     #TODO better system for detecting tables
     
     #TODO Need be using named parameters for SQL to avoid potential injection, and to be clean
-    sql = f"DROP TABLE IF EXISTS {self.full_table_name} CREATE TABLE {self.full_table_name}("
+    sql = f"DROP TABLE IF EXISTS {table_name} CREATE TABLE {table_name}("
    
     #Key Properties
     #TODO can you assume only 1 primary key?
@@ -146,10 +146,20 @@ class MSSQLStream(Stream):
     #print(f"would have persisted: {record}")
     #print(f"name: {self.name} , key_properties: {self.key_properties}, schema: {self.schema}")
     #TODO shouldn't manually generate the table name here
-    dml = self.record_to_dml(table_name=self.full_table_name,data=record)    
+    dml = self.record_to_dml(table_name=self.full_table_name+"_temp",data=record)    
     #print(dml)
     self.sql_runner(dml)
-  
+
+  def clean_up(self):
+      #We are good to go, drop table if it exists
+      sql = f"DROP TABLE IF EXISTS {self.full_table_name}"
+      self.sql_runner(sql)
+      #Rename our temp table to the correct table
+      sql = f"SELECT * INTO {self.full_table_name} from {self.full_table_name}_temp"
+      self.sql_runner(sql)
+      #Remove temp table
+      sql = f"DROP TABLE IF EXISTS {self.full_table_name}_temp"
+      self.sql_runner(sql)
   #def flush_stream(self)
   #  sql = tempdb_to_actualdb_sql(temp_db_name, actual_db_name)
   #  sql_runner(sql)

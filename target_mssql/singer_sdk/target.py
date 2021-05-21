@@ -42,7 +42,6 @@ class Target:
 
     def process_schema_message(self, message):
         stream = message["stream"]
-        
         self.streams_in[stream] = self.get_stream(
             stream, message["schema"], message["key_properties"]
         )
@@ -102,6 +101,11 @@ class Target:
         logger.debug("Emitting state {}".format(line))
         sys.stdout.write("{}\n".format(line))
         sys.stdout.flush()
+    
+    def clean_up(self):
+        print(self.streams_in) 
+        for streamname, stream in self.streams_in.items():
+            stream.clean_up()
 
     @classmethod
     def cli(cls):
@@ -112,6 +116,7 @@ class Target:
 
             input_messages = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8")
             target.process_messages(input_messages)
+            target.clean_up()
             logger.debug("Exiting normally")
 
         return cli
