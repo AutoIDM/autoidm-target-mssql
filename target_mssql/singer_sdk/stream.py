@@ -21,3 +21,6 @@ class Stream:
 
     def persist_record(self, record):
         raise NotImplementedError
+    
+    def clean_up(self):
+        raise NotImplementedError
