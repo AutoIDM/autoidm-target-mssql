@@ -13,6 +13,7 @@ click = "^7.1.2"
 requests = "^2.25.1"
 simplejson = "3.11.1"
 pymssql = "2.1.5"
+pylint = "^2.8.2"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.1.2"
