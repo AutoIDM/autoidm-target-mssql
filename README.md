@@ -21,6 +21,7 @@ port: example: 1433
 database:
 user:
 password:
+trusted_connection: yes # Will use windows authentication 
 schema (Optional): will default to whatever the user's default schema is set to if this isn't set
 
 A full list of supported settings and capabilities for this
