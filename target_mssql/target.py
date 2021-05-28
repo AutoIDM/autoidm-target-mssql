@@ -16,7 +16,7 @@ class TargetMSSQL(Target):
     super().__init__(config, *args, **kwargs)
     assert self.config["host"]
     driver = self.config.get("driver", "{ODBC Driver 17 for SQL Server}")
-    server = self.config["host"]+ "," + self.config.get("port", 1433) 
+    server = self.config["host"]+ "," + str(self.config.get("port", 1433)) 
     if (self.config.get("trusted_connection")=="yes"):
         self.conn = pyodbc.connect( driver=driver,
                                     server=server,
