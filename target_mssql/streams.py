@@ -2,7 +2,6 @@
 from pathlib import Path
 from typing import Any, Dict, Optional, Union, List, Iterable
 from .singer_sdk.stream import Stream
-import pymssql
 import logging
 from decimal import Decimal
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
@@ -16,7 +15,7 @@ class MSSQLStream(Stream):
     super().__init__(*args, **kwargs)
     self.conn = conn
     #TODO: Turn off autocommit and deal with batching
-    self.conn.autocommit(True)
+    self.conn.autocommit=True
     #TODO Think about the right way to handle this when restructuring classes re https://pymssql.readthedocs.io/en/stable/pymssql_examples.html#important-note-about-cursors
     self.cursor = self.conn.cursor() 
     self.full_table_name = self.generate_full_table_name(self.name, schema_name)
@@ -108,9 +107,8 @@ class MSSQLStream(Stream):
 
   def convert_data_to_params(self, datalist) -> list:
       parameters = []
-      for data in datalist:
-          if type(data) in (int, Decimal): parameters.append("%d")
-          else: parameters.append("%s")
+      for noop in datalist:
+          parameters.append("?")
       return parameters 
      
   #TODO when this is batched how do you make sure the column ordering stays the same (data class probs)

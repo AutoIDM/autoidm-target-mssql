@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List
 from .singer_sdk.target import Target
 from .streams import MSSQLStream
-import pymssql
+import pyodbc 
 
 #STREAM_TYPES = [
 #  MSSQLStream,
@@ -15,12 +15,21 @@ class TargetMSSQL(Target):
   def __init__(self, config, *args, **kwargs):
     super().__init__(config, *args, **kwargs)
     assert self.config["host"]
-    self.conn = pymssql.connect(host=self.config["host"], 
-                                user=self.config.get("user"),
-                                password=self.config.get("password"),
-                                database=self.config.get("database"),
-                                port=self.config.get("port", 1433) #If port is None, Windows Authentication will fail due to defaults in pymssql. https://github.com/pymssql/pymssql/blob/ff84c14157cf7b1cc528f68d72f07c2d0fb7d290/src/pymssql/_mssql.pyx#L613 
-                                )
+    driver = self.config.get("driver", "{ODBC Driver 17 for SQL Server}")
+    server = self.config["host"]+ "," + self.config.get("port", 1433) 
+    if (self.config.get("trusted_connection")=="yes"):
+        self.conn = pyodbc.connect( driver=driver,
+                                    server=server,
+                                    trusted_connection=self.config.get("trusted_connection"),
+                                    database=self.config.get("database"),
+                                    )
+    else:
+        self.conn = pyodbc.connect( driver=driver,
+                                    server=server,
+                                    uid=self.config.get("user"),
+                                    pwd=self.config.get("password"),
+                                    database=self.config.get("database"),
+                                    )
 
   #TODO not a fan of streams not being required by the BaseTarget class here, as it's referenced in the class
   def streams(self):
