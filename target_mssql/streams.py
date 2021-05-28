@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union, List, Iterable
 from .singer_sdk.stream import Stream
 import pymssql
+import logging
 from decimal import Decimal
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 
@@ -128,7 +129,7 @@ class MSSQLStream(Stream):
       print(f"Running SQL: {sql}")
       self.cursor.execute(sql)
     except Exception as e:
-        print(f"Caught exception whie running sql: {sql}")
+        logging.error(f"Caught exception whie running sql: {sql}")
         raise e
 
   def sql_runner_withparams(self, sql, paramaters):
@@ -136,7 +137,7 @@ class MSSQLStream(Stream):
       print(f"Running SQL: {sql} . Parameters: {paramaters}")
       self.cursor.execute(sql, paramaters)
     except Exception as e:
-        print(f"Caught exception whie running sql: {sql} . Parameters: {paramaters}")
+        logging.error(f"Caught exception whie running sql: {sql} . Parameters: {paramaters}")
         raise e
   
   #def tempdb_to_actualdb_sql(self, temp_db_name, actual_db_name)
