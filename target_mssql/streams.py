@@ -124,12 +124,20 @@ class MSSQLStream(Stream):
     return sql
 
   def sql_runner(self, sql):
-    print(f"Running SQL: {sql}")
-    self.cursor.execute(sql)
+    try:
+      print(f"Running SQL: {sql}")
+      self.cursor.execute(sql)
+    except Exception as e:
+        print(f"Caught exception whie running sql: {sql}")
+        raise e
 
   def sql_runner_withparams(self, sql, paramaters):
-    print(f"Running SQL: {sql} . Parameters: {paramaters}")
-    self.cursor.execute(sql, paramaters)
+    try:
+      print(f"Running SQL: {sql} . Parameters: {paramaters}")
+      self.cursor.execute(sql, paramaters)
+    except Exception as e:
+        print(f"Caught exception whie running sql: {sql} . Parameters: {paramaters}")
+        raise e
   
   #def tempdb_to_actualdb_sql(self, temp_db_name, actual_db_name)
   #def tempdb_drop_sql(self, tempdb_name)
