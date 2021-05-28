@@ -104,21 +104,6 @@ class MSSQLStream(Stream):
     else: raise NotImplementedError(f"Haven't implemented dealing with this type of data. jsontype: {jsontype}") 
      
     return mssqltype
-  
-  def data_json_to_mssqlmapping(self, data) -> str:
-    if(type(data) == str): 
-      data = data.replace('\'','\'\'') #Quotes need to be escape with a quote in SQL
-      returnvalue = f"'{data}'" #Single quotes needed for SQL to pass in data as a string
-    #Could have imported NoneType instead but meh
-    elif(data is None): returnvalue = "NULL"
-    #TODO clean this up a bit, expressions in python?
-    elif(type(data) == bool): 
-      if(data): returnvalue = "1" 
-      else: returnvalue = "0"
-    elif(type(data) == int): returnvalue = f"{data}"
-    elif(type(data) == Decimal): returnvalue = f"{data}"
-    else: raise NotImplementedError(f"Data Type: {type(data)}, Data: {data}")
-    return returnvalue
 
   def convert_data_to_params(self, datalist) -> list:
       parameters = []
@@ -132,11 +117,6 @@ class MSSQLStream(Stream):
   def record_to_dml(self, table_name:str, data:dict) -> str:
     column_list=",".join(data.keys())
     sql = f"INSERT INTO {table_name} ({column_list})"
-    #TODO can make this more pythonic using lambda, list comprehension, or some collections schtuff
-    canonical_data = []
-    for rec in data.values():
-      canonical_data.append(self.data_json_to_mssqlmapping(rec))
-    datalist = ",".join(canonical_data)
 
     paramaters = self.convert_data_to_params(data.values())
     sqlparameters = ",".join(paramaters)
