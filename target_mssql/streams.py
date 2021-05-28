@@ -118,7 +118,14 @@ class MSSQLStream(Stream):
     elif(type(data) == int): returnvalue = f"{data}"
     elif(type(data) == Decimal): returnvalue = f"{data}"
     else: raise NotImplementedError(f"Data Type: {type(data)}, Data: {data}")
-    return returnvalue 
+    return returnvalue
+
+  def convert_data_to_params(self, datalist) -> list:
+      parameters = []
+      for data in datalist:
+          if type(data) in (int, Decimal): parameters.append("%d")
+          else: parameters.append("%s")
+      return parameters 
      
   #TODO when this is batched how do you make sure the column ordering stays the same (data class probs)
   #Columns is seperate due to data not necessairly having all of the correct columns
@@ -130,13 +137,20 @@ class MSSQLStream(Stream):
     for rec in data.values():
       canonical_data.append(self.data_json_to_mssqlmapping(rec))
     datalist = ",".join(canonical_data)
-    sql += f" VALUES ({datalist})" 
+
+    paramaters = self.convert_data_to_params(data.values())
+    sqlparameters = ",".join(paramaters)
+    sql += f" VALUES ({sqlparameters})"
     return sql
 
   def sql_runner(self, sql):
     print(f"Running SQL: {sql}")
     self.cursor.execute(sql)
 
+  def sql_runner_withparams(self, sql, paramaters):
+    print(f"Running SQL: {sql} . Parameters: {paramaters}")
+    self.cursor.execute(sql, paramaters)
+  
   #def tempdb_to_actualdb_sql(self, temp_db_name, actual_db_name)
   #def tempdb_drop_sql(self, tempdb_name)
   #def start_transaction(self) -> str: 
@@ -148,7 +162,7 @@ class MSSQLStream(Stream):
     #TODO shouldn't manually generate the table name here
     dml = self.record_to_dml(table_name=self.full_table_name+"_temp",data=record)    
     #print(dml)
-    self.sql_runner(dml)
+    self.sql_runner_withparams(dml, tuple(record.values()))
 
   def clean_up(self):
       #We are good to go, drop table if it exists
