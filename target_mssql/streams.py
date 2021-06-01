@@ -25,8 +25,9 @@ class MSSQLStream(Stream):
   def generate_full_table_name(self, streamname, schema_name):
     table_name = streamname
     table_name = streamname.replace("-","_")
-    if schema_name: table_name = schema_name + "." + table_name
-    return f"[{table_name}]"
+    table_name = f"[{table_name}]"
+    if schema_name: table_name = f"[{schema_name}]" + "." + table_name
+    return table_name
 
   #TODO this method seems needless, should probably just call methods directly
   def table_handler(self):
