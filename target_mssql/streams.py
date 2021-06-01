@@ -19,13 +19,14 @@ class MSSQLStream(Stream):
     #TODO Think about the right way to handle this when restructuring classes re https://pymssql.readthedocs.io/en/stable/pymssql_examples.html#important-note-about-cursors
     self.cursor = self.conn.cursor() 
     self.full_table_name = self.generate_full_table_name(self.name, schema_name)
+    self.temp_full_table_name = self.generate_full_table_name(f"{self.name}_temp", schema_name)
     self.table_handler()
 
   def generate_full_table_name(self, streamname, schema_name):
     table_name = streamname
     table_name = streamname.replace("-","_")
     if schema_name: table_name = schema_name + "." + table_name
-    return table_name
+    return f"[{table_name}]"
 
   #TODO this method seems needless, should probably just call methods directly
   def table_handler(self):
@@ -33,7 +34,7 @@ class MSSQLStream(Stream):
     
     #TODO How do we know all of the data is through and we are ready to drop and merge data into the table?
     
-    ddl = self.schema_to_temp_table_ddl(self.schema, self.full_table_name+"_temp")
+    ddl = self.schema_to_temp_table_ddl(self.schema, self.temp_full_table_name)
     self.sql_runner(ddl)
   
   def schema_to_temp_table_ddl(self, schema, table_name) -> str:
@@ -58,7 +59,7 @@ class MSSQLStream(Stream):
       #TODO Can't assume this is an INT always
       #TODO 450 is silly
       pk_type=pk_type.replace("MAX","450") #TODO hacky hacky
-      sql += f"{primary_key} {pk_type} NOT NULL PRIMARY KEY,"
+      sql += f"[{primary_key}] {pk_type} NOT NULL PRIMARY KEY,"
       properties.pop(primary_key, None) #Don't add the primary key to our DDL again
 
     
@@ -69,10 +70,10 @@ class MSSQLStream(Stream):
       if (mssqltype is None): continue #Empty Schemas
       mssqltype=self.ddl_json_to_mssqlmapping(shape)
       if(first): 
-        sql+= f" {name} {mssqltype}"
+        sql+= f" [{name}] {mssqltype}"
         first=False
       else: 
-        sql+= f", {name} {mssqltype}"
+        sql+= f", [{name}] {mssqltype}"
 
     
     sql += ");"
@@ -114,8 +115,9 @@ class MSSQLStream(Stream):
   #TODO when this is batched how do you make sure the column ordering stays the same (data class probs)
   #Columns is seperate due to data not necessairly having all of the correct columns
   def record_to_dml(self, table_name:str, data:dict) -> str:
-    column_list=",".join(data.keys())
-    sql = f"INSERT INTO {table_name} ({column_list})"
+    #TODO this is a bit gross, could refactor to make this easier to read
+    column_list="],[".join(data.keys())
+    sql = f"INSERT INTO {table_name} ([{column_list}])"
 
     paramaters = self.convert_data_to_params(data.values())
     sqlparameters = ",".join(paramaters)
@@ -137,18 +139,9 @@ class MSSQLStream(Stream):
     except Exception as e:
         logging.error(f"Caught exception whie running sql: {sql} . Parameters: {paramaters}")
         raise e
-  
-  #def tempdb_to_actualdb_sql(self, temp_db_name, actual_db_name)
-  #def tempdb_drop_sql(self, tempdb_name)
-  #def start_transaction(self) -> str: 
-  #def complete_transaction(self)
 
   def persist_record(self, record):
-    #print(f"would have persisted: {record}")
-    #print(f"name: {self.name} , key_properties: {self.key_properties}, schema: {self.schema}")
-    #TODO shouldn't manually generate the table name here
-    dml = self.record_to_dml(table_name=self.full_table_name+"_temp",data=record)    
-    #print(dml)
+    dml = self.record_to_dml(table_name=self.temp_full_table_name,data=record)    
     self.sql_runner_withparams(dml, tuple(record.values()))
 
   def clean_up(self):
@@ -156,10 +149,10 @@ class MSSQLStream(Stream):
       sql = f"DROP TABLE IF EXISTS {self.full_table_name}"
       self.sql_runner(sql)
       #Rename our temp table to the correct table
-      sql = f"SELECT * INTO {self.full_table_name} from {self.full_table_name}_temp"
+      sql = f"SELECT * INTO {self.full_table_name} from {self.temp_full_table_name}"
       self.sql_runner(sql)
       #Remove temp table
-      sql = f"DROP TABLE IF EXISTS {self.full_table_name}_temp"
+      sql = f"DROP TABLE IF EXISTS {self.temp_full_table_name}"
       self.sql_runner(sql)
   #def flush_stream(self)
   #  sql = tempdb_to_actualdb_sql(temp_db_name, actual_db_name)
