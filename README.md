@@ -15,7 +15,7 @@ pipx install target-mssql
 ## Configuration
 
 ### Accepted Config Options
-
+```
 host: Hostname (example: localhost)
 port: example: 1433
 database:
@@ -23,9 +23,10 @@ user:
 password:
 trusted_connection: yes # Will use windows authentication 
 schema (Optional): will default to whatever the user's default schema is set to if this isn't set
-
+batch_size (Optional): Will default to 10000
 A full list of supported settings and capabilities for this
 tap is available by running:
+```
 
 ```bash
 target-mssql --about
