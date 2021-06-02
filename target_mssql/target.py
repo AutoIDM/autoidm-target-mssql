@@ -39,7 +39,8 @@ class TargetMSSQL(Target):
   #TODO this is a silly way to do this
   def streamclass(self, *args, **kwargs):
     schema=self.config.get("schema")
-    return MSSQLStream(conn=self.conn, schema_name=schema, *args, **kwargs)
+    batch_size=self.config.get("batch_size")
+    return MSSQLStream(conn=self.conn, schema_name=schema, batch_size=batch_size,*args, **kwargs)
 # CLI Execution:
 
 cli = TargetMSSQL.cli()

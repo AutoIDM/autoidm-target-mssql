@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union, List, Iterable
 from .singer_sdk.stream import Stream
 import logging
+import pyodbc
 from decimal import Decimal
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 
@@ -11,13 +12,15 @@ SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 class MSSQLStream(Stream):
   
   """Stream class for MSSQL streams."""
-  def __init__(self, conn, schema_name, *args, **kwargs):
+  def __init__(self, conn, schema_name, batch_size, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.conn = conn
-    #TODO: Turn off autocommit and deal with batching
     self.conn.autocommit=True
     #TODO Think about the right way to handle this when restructuring classes re https://pymssql.readthedocs.io/en/stable/pymssql_examples.html#important-note-about-cursors
     self.cursor = self.conn.cursor() 
+    self.dml_sql = None
+    self.batch_cache = [] 
+    self.batch_size = 10000 if batch_size is None else batch_size
     self.full_table_name = self.generate_full_table_name(self.name, schema_name)
     self.temp_full_table_name = self.generate_full_table_name(f"{self.name}_temp", schema_name)
     self.table_handler()
@@ -134,18 +137,44 @@ class MSSQLStream(Stream):
         raise e
 
   def sql_runner_withparams(self, sql, paramaters):
+    self.batch_cache.append(paramaters)
+    if(len(self.batch_cache)>=self.batch_size):
+      print(f"Running batch with SQL: {sql} . Batch size: {len(self.batch_cache)}")
+      self.commit_batched_data(sql, self.batch_cache)
+      self.batch_cache = [] #Get our cache ready for more! 
+  
+  #This does not clear the cache that's up to you!
+  def commit_batched_data(self, dml, cache):
     try:
-      print(f"Running SQL: {sql} . Parameters: {paramaters}")
-      self.cursor.execute(sql, paramaters)
-    except Exception as e:
-        logging.error(f"Caught exception whie running sql: {sql} . Parameters: {paramaters}")
-        raise e
+      self.conn.autocommit = False
+      self.cursor.fast_executemany = True
+      self.cursor.executemany(dml, cache)
+    except pyodbc.DatabaseError as e:
+      logging.error(f"Caught exception whie running batch sql: {dml}.")
+      self.conn.rollback()
+      raise e
+    else:
+        self.conn.commit()
+    finally:
+        self.cursor.fast_executemany = False
+        self.conn.autocommit = True #Set us back to the default of autoCommiting for other actions
+        
 
+  #Not actually persisting the record yet, batching
   def persist_record(self, record):
     dml = self.record_to_dml(table_name=self.temp_full_table_name,data=record)    
+    #TODO don't need to generate dml every time if we can be confident the ordering and data is correct (Singer forces this?)
+    if (self.dml_sql is not None): 
+        assert self.dml_sql == dml
+    else: self.dml_sql = dml
+
     self.sql_runner_withparams(dml, tuple(record.values()))
 
   def clean_up(self):
+      #Commit any batched records that are left
+      if(len(self.batch_cache)>0):
+          print(f"Running batch with SQL: {self.dml_sql} . Batch size: {len(self.batch_cache)}")
+          self.commit_batched_data(self.dml_sql, self.batch_cache)
       #We are good to go, drop table if it exists
       sql = f"DROP TABLE IF EXISTS {self.full_table_name}"
       self.sql_runner(sql)
@@ -155,9 +184,3 @@ class MSSQLStream(Stream):
       #Remove temp table
       sql = f"DROP TABLE IF EXISTS {self.temp_full_table_name}"
       self.sql_runner(sql)
-  #def flush_stream(self)
-  #  sql = tempdb_to_actualdb_sql(temp_db_name, actual_db_name)
-  #  sql_runner(sql)
-  #  drop_tempdb = tempdb_drop_sql(temp_db_name)
-  #  sql_runner(drop_tempdb)
-  #  sql_runner(complete_transaction())
