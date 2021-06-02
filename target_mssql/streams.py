@@ -99,7 +99,7 @@ class MSSQLStream(Stream):
     #  print(jsontype)
     mssqltype : str = None
     if ("string" in jsontype): mssqltype = "VARCHAR(MAX)"
-    elif ("number" in jsontype): mssqltype = "BIGINT" #TODO is int always the right choice?
+    elif ("number" in jsontype): mssqltype = "NUMERIC(19,4)" #TODO is int always the right choice?
     elif ("integer" in jsontype): mssqltype = "BIGINT" #TODO is int always the right choice?
     elif ("boolean" in jsontype): mssqltype = "BIT"
      #not tested
@@ -150,7 +150,8 @@ class MSSQLStream(Stream):
       self.cursor.fast_executemany = True
       self.cursor.executemany(dml, cache)
     except pyodbc.DatabaseError as e:
-      logging.error(f"Caught exception whie running batch sql: {dml}.")
+      logging.error(f"Caught exception whie running batch sql: {dml}. ")
+      logging.debug(f"Caught exception whie running batch sql: {dml}. Parameters for batch: {cache} ")
       self.conn.rollback()
       raise e
     else:
