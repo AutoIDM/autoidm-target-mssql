@@ -151,7 +151,7 @@ class MSSQLStream(Stream):
       self.cursor.executemany(dml, cache)
     except pyodbc.DatabaseError as e:
       logging.error(f"Caught exception whie running batch sql: {dml}. ")
-      logging.error(f"Caught exception whie running batch sql: {dml}. Parameters for batch: {cache} ")
+      logging.debug(f"Caught exception whie running batch sql: {dml}. Parameters for batch: {cache} ")
       self.conn.rollback()
       raise e
     else:
