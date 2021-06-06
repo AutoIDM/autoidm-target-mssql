@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional, Union, List, Iterable
 from .singer_sdk.stream import Stream
 import logging
 import pyodbc
+import math
 from decimal import Decimal
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 
@@ -87,20 +88,38 @@ class MSSQLStream(Stream):
    #TODO what happens with multiple types
    #TODO what happens if the string type I want isn't first
   def ddl_json_to_mssqlmapping(self, shape:dict) -> str:
-    #TODO this is not solid, need to harden
-    #if (type(shape["type"]) == str): jsontype = shape["type"]
     #TODO need to prioritize which type first
-    #else: 
     if ("type" not in shape): return None 
     jsontype = shape["type"]
-    #  jsontype.sort()
-    #  jsontype.reverse()
-    #  jsontype=jsontype[0]
-    #  print(jsontype)
+    json_max_length = shape.get("maxLength",None)
+    json_format = shape.get("format", None)
+    json_minimum = shape.get("minimum", None) 
+    json_maximum = shape.get("maximum", None) 
+    json_exclusive_minimum = shape.get("exclusiveMinimum", None)
+    json_exclusive_maximum = shape.get("exclusiveMaximum", None)
+    json_multiple_of = shape.get("multipleOf", None)
     mssqltype : str = None
-    if ("string" in jsontype): mssqltype = "VARCHAR(MAX)"
-    elif ("number" in jsontype): mssqltype = "NUMERIC(19,4)" #TODO is int always the right choice?
-    elif ("integer" in jsontype): mssqltype = "BIGINT" #TODO is int always the right choice?
+    if ("string" in jsontype): 
+        if(json_max_length and json_max_length < 8000): mssqltype = f"VARCHAR({json_max_length})" 
+        elif(json_format == "date-time"): mssqltype = f"Datetime2(7)"
+        else: mssqltype = "VARCHAR(MAX)"
+    elif ("number" in jsontype): 
+        if (json_minimum and json_maximum and json_exclusive_minimum and json_exclusive_maximum and json_multiple_of):
+            #https://docs.microsoft.com/en-us/sql/t-sql/data-types/decimal-and-numeric-transact-sql?view=sql-server-ver15
+            #p (Precision) Total number of decimal digits
+            #s (Scale) Total number of decimal digits to the right of the decimal place
+            
+            max_digits_left_of_decimal = math.log10(json_maximum) 
+            print(f"json_maximum: {json_maximum}")
+            print(f"max_digits_left_of_decimal: {max_digits_left_of_decimal}")
+            max_digits_right_of_decimal = -1*math.log10(json_multiple_of)
+            print(f"json_multiple_of: {json_multiple_of}")
+            percision : int = int(max_digits_left_of_decimal + max_digits_right_of_decimal)
+            scale : int = int(max_digits_right_of_decimal)
+            mssqltype = f"NUMERIC({percision},{scale})"
+        else: 
+            mssqltype = "NUMERIC(19,4)" #TODO is int always the right choice?
+    elif ("integer" in jsontype): mssqltype = "BIGINT" 
     elif ("boolean" in jsontype): mssqltype = "BIT"
      #not tested
     elif ("null" in jsontype): raise NotImplementedError("Can't set columns as null in MSSQL")
@@ -147,11 +166,11 @@ class MSSQLStream(Stream):
   def commit_batched_data(self, dml, cache):
     try:
       self.conn.autocommit = False
-      self.cursor.fast_executemany = True
+      self.cursor.fast_executemany = False #Had to turn off for at least dates 
       self.cursor.executemany(dml, cache)
     except pyodbc.DatabaseError as e:
-      logging.error(f"Caught exception whie running batch sql: {dml}. ")
-      logging.debug(f"Caught exception whie running batch sql: {dml}. Parameters for batch: {cache} ")
+      logging.error(f"Caught exception while running batch sql: {dml}. ")
+      logging.error(f"Caught exception while running batch sql: {dml}. Parameters for batch: {cache} ")
       self.conn.rollback()
       raise e
     else:
@@ -174,7 +193,7 @@ class MSSQLStream(Stream):
   def clean_up(self):
       #Commit any batched records that are left
       if(len(self.batch_cache)>0):
-          print(f"Running batch with SQL: {self.dml_sql} . Batch size: {len(self.batch_cache)}")
+          logging.info(f"Running batch with SQL: {self.dml_sql} . Batch size: {len(self.batch_cache)}")
           self.commit_batched_data(self.dml_sql, self.batch_cache)
       #We are good to go, drop table if it exists
       sql = f"DROP TABLE IF EXISTS {self.full_table_name}"
