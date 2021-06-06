@@ -110,10 +110,7 @@ class MSSQLStream(Stream):
             #s (Scale) Total number of decimal digits to the right of the decimal place
             
             max_digits_left_of_decimal = math.log10(json_maximum) 
-            print(f"json_maximum: {json_maximum}")
-            print(f"max_digits_left_of_decimal: {max_digits_left_of_decimal}")
             max_digits_right_of_decimal = -1*math.log10(json_multiple_of)
-            print(f"json_multiple_of: {json_multiple_of}")
             percision : int = int(max_digits_left_of_decimal + max_digits_right_of_decimal)
             scale : int = int(max_digits_right_of_decimal)
             mssqltype = f"NUMERIC({percision},{scale})"
