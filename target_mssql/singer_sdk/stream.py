@@ -1,5 +1,6 @@
 #Borrowed from https://gitlab.com/DouweM/target-lunch-money/-/blob/master/target_lunch_money/singer_sdk/stream.py
 from jsonschema.validators import Draft4Validator
+import decimal 
 import singer
 logger = singer.get_logger()
 
@@ -7,6 +8,7 @@ class Stream:
     #TODO as of right now without a schema things will fail
     def __init__(self, target, name=None, schema=None, key_properties=None):
         self.target = target
+        decimal.getcontext().prec = 50 
         if name:
             self.name = name
         if schema:
@@ -24,3 +26,4 @@ class Stream:
     
     def clean_up(self):
         raise NotImplementedError
+

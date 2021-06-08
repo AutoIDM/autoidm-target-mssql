@@ -5,6 +5,7 @@ from .singer_sdk.stream import Stream
 import logging
 import pyodbc
 import math
+import base64
 from decimal import Decimal
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 
@@ -40,9 +41,11 @@ class MSSQLStream(Stream):
     #TODO How do we know all of the data is through and we are ready to drop and merge data into the table?
     
     ddl = self.schema_to_temp_table_ddl(self.schema, self.temp_full_table_name)
+    self.ddl = ddl #Need access to column types when doing data processing( ie VARBINARY b64 decode)
     self.sql_runner(ddl)
   
   def schema_to_temp_table_ddl(self, schema, table_name) -> str:
+    self.name_type_mapping = {} #Created dict for Name to Value mapping, ultimeately for data conversion. TODO this is a bit clunky
     primary_key=None
     try:
       if(self.key_properties[0]):
@@ -74,6 +77,7 @@ class MSSQLStream(Stream):
       mssqltype=self.ddl_json_to_mssqlmapping(shape)
       if (mssqltype is None): continue #Empty Schemas
       mssqltype=self.ddl_json_to_mssqlmapping(shape)
+      self.name_type_mapping.update({name:mssqltype}) #TODO clunky for data conversation
       if(first): 
         sql+= f" [{name}] {mssqltype}"
         first=False
@@ -91,6 +95,7 @@ class MSSQLStream(Stream):
     #TODO need to prioritize which type first
     if ("type" not in shape): return None 
     jsontype = shape["type"]
+    json_description = shape.get("description", None)
     json_max_length = shape.get("maxLength",None)
     json_format = shape.get("format", None)
     json_minimum = shape.get("minimum", None) 
@@ -100,7 +105,8 @@ class MSSQLStream(Stream):
     json_multiple_of = shape.get("multipleOf", None)
     mssqltype : str = None
     if ("string" in jsontype): 
-        if(json_max_length and json_max_length < 8000): mssqltype = f"VARCHAR({json_max_length})" 
+        if(json_max_length and json_max_length < 8000 and json_description != "blob"): mssqltype = f"VARCHAR({json_max_length})" 
+        elif(json_description == "blob"): mssqltype = f"VARBINARY(max)"
         elif(json_format == "date-time"): mssqltype = f"Datetime2(7)"
         else: mssqltype = "VARCHAR(MAX)"
     elif ("number" in jsontype): 
@@ -165,6 +171,7 @@ class MSSQLStream(Stream):
       self.conn.autocommit = False
       self.cursor.fast_executemany = False #Had to turn off for at least dates 
       self.cursor.executemany(dml, cache)
+      logging.info(cache)
     except pyodbc.DatabaseError as e:
       logging.error(f"Caught exception while running batch sql: {dml}. ")
       logging.debug(f"Caught exception while running batch sql: {dml}. Parameters for batch: {cache} ")
@@ -176,6 +183,16 @@ class MSSQLStream(Stream):
         self.cursor.fast_executemany = False
         self.conn.autocommit = True #Set us back to the default of autoCommiting for other actions
         
+  def data_conversion(self, name_ddltype_mapping, record):
+      newrecord = record
+      if ("VARBINARY(max)" in name_ddltype_mapping.values()): 
+          #VARBINARY There, we need to do some conversation
+          for name, ddl in name_ddltype_mapping.items():
+              if ddl=="VARBINARY(max)":
+                  b64decode = None
+                  if (record.get(name) != None): b64decode = base64.b64decode(record.get(name))
+                  record.update({name:b64decode})
+      return newrecord
 
   #Not actually persisting the record yet, batching
   def persist_record(self, record):
@@ -184,6 +201,13 @@ class MSSQLStream(Stream):
     if (self.dml_sql is not None): 
         assert self.dml_sql == dml
     else: self.dml_sql = dml
+    
+    #Data Conversion for Binary Data
+
+    #If DDL contains maxBinary
+    #Convert data
+    record = self.data_conversion(self.name_type_mapping, record)
+
 
     self.sql_runner_withparams(dml, tuple(record.values()))
 
