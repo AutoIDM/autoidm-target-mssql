@@ -107,6 +107,7 @@ class MSSQLStream(Stream):
     if ("string" in jsontype): 
         if(json_max_length and json_max_length < 8000 and json_description != "blob"): mssqltype = f"VARCHAR({json_max_length})" 
         elif(json_description == "blob"): mssqltype = f"VARBINARY(max)"
+        elif(json_format == "date-time" and json_description == "date"): mssqltype = f"Date"
         elif(json_format == "date-time"): mssqltype = f"Datetime2(7)"
         else: mssqltype = "VARCHAR(MAX)"
     elif ("number" in jsontype): 
@@ -152,7 +153,7 @@ class MSSQLStream(Stream):
 
   def sql_runner(self, sql):
     try:
-      print(f"Running SQL: {sql}")
+      logging.info(f"Running SQL: {sql}")
       self.cursor.execute(sql)
     except Exception as e:
         logging.error(f"Caught exception whie running sql: {sql}")
@@ -161,7 +162,7 @@ class MSSQLStream(Stream):
   def sql_runner_withparams(self, sql, paramaters):
     self.batch_cache.append(paramaters)
     if(len(self.batch_cache)>=self.batch_size):
-      print(f"Running batch with SQL: {sql} . Batch size: {len(self.batch_cache)}")
+      logging.info(f"Running batch with SQL: {sql} . Batch size: {len(self.batch_cache)}")
       self.commit_batched_data(sql, self.batch_cache)
       self.batch_cache = [] #Get our cache ready for more! 
   
@@ -171,7 +172,6 @@ class MSSQLStream(Stream):
       self.conn.autocommit = False
       self.cursor.fast_executemany = False #Had to turn off for at least dates 
       self.cursor.executemany(dml, cache)
-      logging.info(cache)
     except pyodbc.DatabaseError as e:
       logging.error(f"Caught exception while running batch sql: {dml}. ")
       logging.debug(f"Caught exception while running batch sql: {dml}. Parameters for batch: {cache} ")
@@ -192,6 +192,12 @@ class MSSQLStream(Stream):
                   b64decode = None
                   if (record.get(name) != None): b64decode = base64.b64decode(record.get(name))
                   record.update({name:b64decode})
+                  #Tested this with the data that lands in the MSSQL database
+                  #Take the hex data and convert them to bytes
+                  #bytes = bytes.fromhex(hex) #remove hex indicator 0x from hex
+                  #with open('file2.png', 'wb') as file
+                  #  file.write(bytes)
+                  #Example I used was a png, you'll need to determine type
       return newrecord
 
   #Not actually persisting the record yet, batching
