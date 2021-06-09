@@ -8,7 +8,7 @@ class Stream:
     #TODO as of right now without a schema things will fail
     def __init__(self, target, name=None, schema=None, key_properties=None):
         self.target = target
-        decimal.getcontext().prec = 50 
+        decimal.getcontext().prec = 50 #TODO is this the right amount of precision? 
         if name:
             self.name = name
         if schema:

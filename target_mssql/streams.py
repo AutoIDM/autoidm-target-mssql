@@ -89,9 +89,7 @@ class MSSQLStream(Stream):
     sql += ");"
     return sql
   
-   #TODO clean up / make methods like this static
    #TODO what happens with multiple types
-   #TODO what happens if the string type I want isn't first
   def ddl_json_to_mssqlmapping(self, shape:dict) -> str:
     #TODO need to prioritize which type first
     if ("type" not in shape): return None 
@@ -123,7 +121,7 @@ class MSSQLStream(Stream):
             scale : int = int(max_digits_right_of_decimal)
             mssqltype = f"NUMERIC({percision},{scale})"
         else: 
-            mssqltype = "NUMERIC(19,4)" #TODO is int always the right choice?
+            mssqltype = "NUMERIC(19,4)" #TODO is this correct? 
     elif ("integer" in jsontype): mssqltype = "BIGINT" 
     elif ("boolean" in jsontype): mssqltype = "BIT"
      #not tested
@@ -162,7 +160,6 @@ class MSSQLStream(Stream):
 
   def sql_runner_withparams(self, sql, paramaters):
     self.batch_cache.append(paramaters)
-    #logging.info(paramaters)
     if(len(self.batch_cache)>=self.batch_size):
       logging.info(f"Running batch with SQL: {sql} . Batch size: {len(self.batch_cache)}")
       self.commit_batched_data(sql, self.batch_cache)
@@ -172,7 +169,7 @@ class MSSQLStream(Stream):
   def commit_batched_data(self, dml, cache):
     try:
       self.conn.autocommit = False
-      self.cursor.fast_executemany = True #Had to turn off for at least dates 
+      self.cursor.fast_executemany = True 
       self.cursor.executemany(dml, cache)
     except pyodbc.DatabaseError as e:
       logging.error(f"Caught exception while running batch sql: {dml}. ")
@@ -188,7 +185,6 @@ class MSSQLStream(Stream):
   def data_conversion(self, name_ddltype_mapping, record):
       newrecord = record
       if ("VARBINARY(max)" in name_ddltype_mapping.values() or "Date" in name_ddltype_mapping.values() or "Datetime2(7)" in name_ddltype_mapping.values()): 
-          #VARBINARY There, we need to do some conversation
           for name, ddl in name_ddltype_mapping.items():
               if ddl=="VARBINARY(max)":
                   b64decode = None
@@ -224,9 +220,6 @@ class MSSQLStream(Stream):
         assert self.dml_sql == dml
     else: self.dml_sql = dml
     
-    #Data Conversion for Binary Data
-
-    #If DDL contains maxBinary
     #Convert data
     record = self.data_conversion(self.name_type_mapping, record)
 

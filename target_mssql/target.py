@@ -29,7 +29,6 @@ class TargetMSSQL(Target):
                                     uid=self.config.get("user"),
                                     pwd=self.config.get("password"),
                                     database=self.config.get("database"),
-                                    UseFMTONLY="yes",
                                     )
 
   #TODO not a fan of streams not being required by the BaseTarget class here, as it's referenced in the class
