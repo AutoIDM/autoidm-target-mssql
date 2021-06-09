@@ -2,6 +2,7 @@
 from pathlib import Path
 from typing import Any, Dict, Optional, Union, List, Iterable
 from .singer_sdk.stream import Stream
+from datetime import datetime
 import logging
 import pyodbc
 import math
@@ -161,8 +162,10 @@ class MSSQLStream(Stream):
 
   def sql_runner_withparams(self, sql, paramaters):
     self.batch_cache.append(paramaters)
+    #logging.info(paramaters)
     if(len(self.batch_cache)>=self.batch_size):
       logging.info(f"Running batch with SQL: {sql} . Batch size: {len(self.batch_cache)}")
+      logging.info(self.batch_cache)
       self.commit_batched_data(sql, self.batch_cache)
       self.batch_cache = [] #Get our cache ready for more! 
   
@@ -170,7 +173,7 @@ class MSSQLStream(Stream):
   def commit_batched_data(self, dml, cache):
     try:
       self.conn.autocommit = False
-      self.cursor.fast_executemany = False #Had to turn off for at least dates 
+      self.cursor.fast_executemany = True #Had to turn off for at least dates 
       self.cursor.executemany(dml, cache)
     except pyodbc.DatabaseError as e:
       logging.error(f"Caught exception while running batch sql: {dml}. ")
@@ -185,19 +188,31 @@ class MSSQLStream(Stream):
         
   def data_conversion(self, name_ddltype_mapping, record):
       newrecord = record
-      if ("VARBINARY(max)" in name_ddltype_mapping.values()): 
+      if ("VARBINARY(max)" in name_ddltype_mapping.values() or "Date" in name_ddltype_mapping.values() or "Datetime2(7)" in name_ddltype_mapping.values()): 
           #VARBINARY There, we need to do some conversation
           for name, ddl in name_ddltype_mapping.items():
               if ddl=="VARBINARY(max)":
                   b64decode = None
                   if (record.get(name) != None): b64decode = base64.b64decode(record.get(name))
-                  record.update({name:b64decode})
                   #Tested this with the data that lands in the MSSQL database
                   #Take the hex data and convert them to bytes
                   #bytes = bytes.fromhex(hex) #remove hex indicator 0x from hex
                   #with open('file2.png', 'wb') as file
                   #  file.write(bytes)
                   #Example I used was a png, you'll need to determine type
+                  record.update({name:b64decode})
+              if ddl=="Date":
+                 date = record.get(name)
+                 transformed_date = date[0:-3]+date[-2:]
+                 date = datetime.strptime(transformed_date, '%Y-%m-%dT%H:%M:%S.%f%z')
+                 newdate = date.strftime("%Y-%m-%d")
+                 record.update({name:newdate})
+              if ddl=="Datetime2(7)":
+                 date = record.get(name)
+                 transformed_date = date[0:-3]+date[-2:]
+                 date = datetime.strptime(transformed_date, '%Y-%m-%dT%H:%M:%S.%f%z')
+                 newdate = date.strftime("%Y-%m-%d %H:%M:%S.%f")
+                 record.update({name:newdate})
       return newrecord
 
   #Not actually persisting the record yet, batching
