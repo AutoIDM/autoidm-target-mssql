@@ -165,7 +165,6 @@ class MSSQLStream(Stream):
     #logging.info(paramaters)
     if(len(self.batch_cache)>=self.batch_size):
       logging.info(f"Running batch with SQL: {sql} . Batch size: {len(self.batch_cache)}")
-      logging.info(self.batch_cache)
       self.commit_batched_data(sql, self.batch_cache)
       self.batch_cache = [] #Get our cache ready for more! 
   
