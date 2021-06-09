@@ -192,7 +192,7 @@ class MSSQLStream(Stream):
           for name, ddl in name_ddltype_mapping.items():
               if ddl=="VARBINARY(max)":
                   b64decode = None
-                  if (record.get(name) != None): b64decode = base64.b64decode(record.get(name))
+                  if (record.get(name) is not None): b64decode = base64.b64decode(record.get(name))
                   #Tested this with the data that lands in the MSSQL database
                   #Take the hex data and convert them to bytes
                   #bytes = bytes.fromhex(hex) #remove hex indicator 0x from hex
@@ -202,16 +202,18 @@ class MSSQLStream(Stream):
                   record.update({name:b64decode})
               if ddl=="Date":
                  date = record.get(name)
-                 transformed_date = date[0:-3]+date[-2:]
-                 date = datetime.strptime(transformed_date, '%Y-%m-%dT%H:%M:%S.%f%z')
-                 newdate = date.strftime("%Y-%m-%d")
-                 record.update({name:newdate})
+                 if date is not None: 
+                     transformed_date = date[0:-3]+date[-2:]
+                     date = datetime.strptime(transformed_date, '%Y-%m-%dT%H:%M:%S.%f%z')
+                     newdate = date.strftime("%Y-%m-%d")
+                     record.update({name:newdate})
               if ddl=="Datetime2(7)":
                  date = record.get(name)
-                 transformed_date = date[0:-3]+date[-2:]
-                 date = datetime.strptime(transformed_date, '%Y-%m-%dT%H:%M:%S.%f%z')
-                 newdate = date.strftime("%Y-%m-%d %H:%M:%S.%f")
-                 record.update({name:newdate})
+                 if date is not None: 
+                     transformed_date = date[0:-3]+date[-2:]
+                     date = datetime.strptime(transformed_date, '%Y-%m-%dT%H:%M:%S.%f%z')
+                     newdate = date.strftime("%Y-%m-%d %H:%M:%S.%f")
+                     record.update({name:newdate})
       return newrecord
 
   #Not actually persisting the record yet, batching
