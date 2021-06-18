@@ -2,8 +2,11 @@
 from pathlib import Path
 from typing import Any, Dict, Optional, Union, List, Iterable
 from .singer_sdk.stream import Stream
+from datetime import datetime
 import logging
 import pyodbc
+import math
+import base64
 from decimal import Decimal
 SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 
@@ -39,9 +42,11 @@ class MSSQLStream(Stream):
     #TODO How do we know all of the data is through and we are ready to drop and merge data into the table?
     
     ddl = self.schema_to_temp_table_ddl(self.schema, self.temp_full_table_name)
+    self.ddl = ddl #Need access to column types when doing data processing( ie VARBINARY b64 decode)
     self.sql_runner(ddl)
   
   def schema_to_temp_table_ddl(self, schema, table_name) -> str:
+    self.name_type_mapping = {} #Created dict for Name to Value mapping, ultimeately for data conversion. TODO this is a bit clunky
     primary_key=None
     try:
       if(self.key_properties[0]):
@@ -73,6 +78,7 @@ class MSSQLStream(Stream):
       mssqltype=self.ddl_json_to_mssqlmapping(shape)
       if (mssqltype is None): continue #Empty Schemas
       mssqltype=self.ddl_json_to_mssqlmapping(shape)
+      self.name_type_mapping.update({name:mssqltype}) #TODO clunky for data conversation
       if(first): 
         sql+= f" [{name}] {mssqltype}"
         first=False
@@ -83,24 +89,40 @@ class MSSQLStream(Stream):
     sql += ");"
     return sql
   
-   #TODO clean up / make methods like this static
    #TODO what happens with multiple types
-   #TODO what happens if the string type I want isn't first
   def ddl_json_to_mssqlmapping(self, shape:dict) -> str:
-    #TODO this is not solid, need to harden
-    #if (type(shape["type"]) == str): jsontype = shape["type"]
     #TODO need to prioritize which type first
-    #else: 
     if ("type" not in shape): return None 
     jsontype = shape["type"]
-    #  jsontype.sort()
-    #  jsontype.reverse()
-    #  jsontype=jsontype[0]
-    #  print(jsontype)
+    json_description = shape.get("description", None)
+    json_max_length = shape.get("maxLength",None)
+    json_format = shape.get("format", None)
+    json_minimum = shape.get("minimum", None) 
+    json_maximum = shape.get("maximum", None) 
+    json_exclusive_minimum = shape.get("exclusiveMinimum", None)
+    json_exclusive_maximum = shape.get("exclusiveMaximum", None)
+    json_multiple_of = shape.get("multipleOf", None)
     mssqltype : str = None
-    if ("string" in jsontype): mssqltype = "VARCHAR(MAX)"
-    elif ("number" in jsontype): mssqltype = "NUMERIC(19,4)" #TODO is int always the right choice?
-    elif ("integer" in jsontype): mssqltype = "BIGINT" #TODO is int always the right choice?
+    if ("string" in jsontype): 
+        if(json_max_length and json_max_length < 8000 and json_description != "blob"): mssqltype = f"VARCHAR({json_max_length})" 
+        elif(json_description == "blob"): mssqltype = f"VARBINARY(max)"
+        elif(json_format == "date-time" and json_description == "date"): mssqltype = f"Date"
+        elif(json_format == "date-time"): mssqltype = f"Datetime2(7)"
+        else: mssqltype = "VARCHAR(MAX)"
+    elif ("number" in jsontype): 
+        if (json_minimum and json_maximum and json_exclusive_minimum and json_exclusive_maximum and json_multiple_of):
+            #https://docs.microsoft.com/en-us/sql/t-sql/data-types/decimal-and-numeric-transact-sql?view=sql-server-ver15
+            #p (Precision) Total number of decimal digits
+            #s (Scale) Total number of decimal digits to the right of the decimal place
+            
+            max_digits_left_of_decimal = math.log10(json_maximum) 
+            max_digits_right_of_decimal = -1*math.log10(json_multiple_of)
+            percision : int = int(max_digits_left_of_decimal + max_digits_right_of_decimal)
+            scale : int = int(max_digits_right_of_decimal)
+            mssqltype = f"NUMERIC({percision},{scale})"
+        else: 
+            mssqltype = "NUMERIC(19,6)" 
+    elif ("integer" in jsontype): mssqltype = "BIGINT" 
     elif ("boolean" in jsontype): mssqltype = "BIT"
      #not tested
     elif ("null" in jsontype): raise NotImplementedError("Can't set columns as null in MSSQL")
@@ -130,7 +152,7 @@ class MSSQLStream(Stream):
 
   def sql_runner(self, sql):
     try:
-      print(f"Running SQL: {sql}")
+      logging.info(f"Running SQL: {sql}")
       self.cursor.execute(sql)
     except Exception as e:
         logging.error(f"Caught exception whie running sql: {sql}")
@@ -139,7 +161,7 @@ class MSSQLStream(Stream):
   def sql_runner_withparams(self, sql, paramaters):
     self.batch_cache.append(paramaters)
     if(len(self.batch_cache)>=self.batch_size):
-      print(f"Running batch with SQL: {sql} . Batch size: {len(self.batch_cache)}")
+      logging.info(f"Running batch with SQL: {sql} . Batch size: {len(self.batch_cache)}")
       self.commit_batched_data(sql, self.batch_cache)
       self.batch_cache = [] #Get our cache ready for more! 
   
@@ -147,11 +169,11 @@ class MSSQLStream(Stream):
   def commit_batched_data(self, dml, cache):
     try:
       self.conn.autocommit = False
-      self.cursor.fast_executemany = True
+      self.cursor.fast_executemany = True 
       self.cursor.executemany(dml, cache)
     except pyodbc.DatabaseError as e:
-      logging.error(f"Caught exception whie running batch sql: {dml}. ")
-      logging.debug(f"Caught exception whie running batch sql: {dml}. Parameters for batch: {cache} ")
+      logging.error(f"Caught exception while running batch sql: {dml}. ")
+      logging.debug(f"Caught exception while running batch sql: {dml}. Parameters for batch: {cache} ")
       self.conn.rollback()
       raise e
     else:
@@ -160,6 +182,35 @@ class MSSQLStream(Stream):
         self.cursor.fast_executemany = False
         self.conn.autocommit = True #Set us back to the default of autoCommiting for other actions
         
+  def data_conversion(self, name_ddltype_mapping, record):
+      newrecord = record
+      if ("VARBINARY(max)" in name_ddltype_mapping.values() or "Date" in name_ddltype_mapping.values() or "Datetime2(7)" in name_ddltype_mapping.values()): 
+          for name, ddl in name_ddltype_mapping.items():
+              if ddl=="VARBINARY(max)":
+                  b64decode = None
+                  if (record.get(name) is not None): b64decode = base64.b64decode(record.get(name))
+                  #Tested this with the data that lands in the MSSQL database
+                  #Take the hex data and convert them to bytes
+                  #bytes = bytes.fromhex(hex) #remove hex indicator 0x from hex
+                  #with open('file2.png', 'wb') as file
+                  #  file.write(bytes)
+                  #Example I used was a png, you'll need to determine type
+                  record.update({name:b64decode})
+              if ddl=="Date":
+                 date = record.get(name)
+                 if date is not None: 
+                     transformed_date = date[0:-3]+date[-2:]
+                     date = datetime.strptime(transformed_date, '%Y-%m-%dT%H:%M:%S.%f%z')
+                     newdate = date.strftime("%Y-%m-%d")
+                     record.update({name:newdate})
+              if ddl=="Datetime2(7)":
+                 date = record.get(name)
+                 if date is not None: 
+                     transformed_date = date[0:-3]+date[-2:]
+                     date = datetime.strptime(transformed_date, '%Y-%m-%dT%H:%M:%S.%f%z')
+                     newdate = date.strftime("%Y-%m-%d %H:%M:%S.%f")
+                     record.update({name:newdate})
+      return newrecord
 
   #Not actually persisting the record yet, batching
   def persist_record(self, record):
@@ -168,13 +219,17 @@ class MSSQLStream(Stream):
     if (self.dml_sql is not None): 
         assert self.dml_sql == dml
     else: self.dml_sql = dml
+    
+    #Convert data
+    record = self.data_conversion(self.name_type_mapping, record)
+
 
     self.sql_runner_withparams(dml, tuple(record.values()))
 
   def clean_up(self):
       #Commit any batched records that are left
       if(len(self.batch_cache)>0):
-          print(f"Running batch with SQL: {self.dml_sql} . Batch size: {len(self.batch_cache)}")
+          logging.info(f"Running batch with SQL: {self.dml_sql} . Batch size: {len(self.batch_cache)}")
           self.commit_batched_data(self.dml_sql, self.batch_cache)
       #We are good to go, drop table if it exists
       sql = f"DROP TABLE IF EXISTS {self.full_table_name}"
