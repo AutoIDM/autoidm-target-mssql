@@ -121,7 +121,7 @@ class MSSQLStream(Stream):
             scale : int = int(max_digits_right_of_decimal)
             mssqltype = f"NUMERIC({percision},{scale})"
         else: 
-            mssqltype = "NUMERIC(19,4)" #TODO is this correct? 
+            mssqltype = "NUMERIC(19,6)" 
     elif ("integer" in jsontype): mssqltype = "BIGINT" 
     elif ("boolean" in jsontype): mssqltype = "BIT"
      #not tested
