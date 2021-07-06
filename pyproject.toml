@@ -14,7 +14,7 @@ requests = "^2.25.1"
 simplejson = "3.11.1"
 pyodbc = "4.0.30"
 pylint = "^2.8.2"
-
+python-dateutil = "2.8.1"
 [tool.poetry.dev-dependencies]
 pytest = "^6.1.2"
 
