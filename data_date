@@ -1,0 +1,5 @@
+{"type": "SCHEMA", "stream": "things", "schema": {"type": "object", "properties": {"thing_id": {"type": "string"}, "name": {"type": "string"}, "date": {"type": "string", "format": "date-time"}}}, "key_properties": ["thing_id"]}
+{"type": "RECORD", "stream": "things", "record": {"thing_id": "3", "name": "Led Zeppelin", "date": "1900-01-01T12:01:22.15+04:00"}}
+{"type": "RECORD", "stream": "things", "record": {"thing_id": "1", "name": "Led Zeppelin", "date": "2055-01-12T00:00:00+0000"}}
+{"type": "RECORD", "stream": "things", "record": {"thing_id": "2", "name": "Justin Beiber", "date": "2025-11-12T00:00:00+0000"}}
+{"type": "STATE", "value": {}}

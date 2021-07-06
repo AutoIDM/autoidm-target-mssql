@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union, List, Iterable
 from .singer_sdk.stream import Stream
 from datetime import datetime
+import dateutil.parser
 import logging
 import pyodbc
 import math
@@ -196,19 +197,18 @@ class MSSQLStream(Stream):
                   #  file.write(bytes)
                   #Example I used was a png, you'll need to determine type
                   record.update({name:b64decode})
+              #https://gitlab.com/meltano/sdk/-/blob/main/singer_sdk/helpers/_typing.py#L179 looks to be a much better implementation, https://gitlab.com/autoidm/autoidm-target-mssql/-/issues/39 is in to migrate.
               if ddl=="Date":
                  date = record.get(name)
-                 if date is not None: 
-                     transformed_date = date[0:-3]+date[-2:]
-                     date = datetime.strptime(transformed_date, '%Y-%m-%dT%H:%M:%S.%f%z')
-                     newdate = date.strftime("%Y-%m-%d")
-                     record.update({name:newdate})
+                 if (date is not None): 
+                    transformed_date = dateutil.parser.isoparse(date)
+                    newdate = transformed_date.strftime("%Y-%m-%d")
+                    record.update({name:newdate})
               if ddl=="Datetime2(7)":
                  date = record.get(name)
-                 if date is not None: 
-                     transformed_date = date[0:-3]+date[-2:]
-                     date = datetime.strptime(transformed_date, '%Y-%m-%dT%H:%M:%S.%f%z')
-                     newdate = date.strftime("%Y-%m-%d %H:%M:%S.%f")
+                 if (date is not None): 
+                     transformed_date = dateutil.parser.isoparse(date)
+                     newdate = transformed_date.strftime("%Y-%m-%d %H:%M:%S.%f")
                      record.update({name:newdate})
       return newrecord
 
