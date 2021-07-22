@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union, List, Iterable
 from .singer_sdk.stream import Stream
 from datetime import datetime
+import time
 import dateutil.parser
 import logging
 import pyodbc
@@ -16,7 +17,7 @@ SCHEMAS_DIR = Path(__file__).parent / Path("./schemas")
 class MSSQLStream(Stream):
   
   """Stream class for MSSQL streams."""
-  def __init__(self, conn, schema_name, batch_size, *args, **kwargs):
+  def __init__(self, conn, schema_name, batch_size, add_record_metadata, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.conn = conn
     self.conn.autocommit=True
@@ -25,9 +26,46 @@ class MSSQLStream(Stream):
     self.dml_sql = None
     self.batch_cache = [] 
     self.batch_size = 10000 if batch_size is None else batch_size
+    if add_record_metadata:
+        self._add_sdc_metadata_to_schema()
     self.full_table_name = self.generate_full_table_name(self.name, schema_name)
     self.temp_full_table_name = self.generate_full_table_name(f"{self.name}_temp", schema_name)
     self.table_handler()
+
+  def _add_sdc_metadata_to_schema(self) -> None:
+        """Add _sdc metadata columns.
+
+        Record metadata specs documented at:
+        https://sdk.meltano.com/en/latest/implementation/record_metadata.md
+        """
+        properties_dict = self.schema["properties"]
+        for col in {
+            "_sdc_extracted_at",
+            "_sdc_received_at",
+            "_sdc_batched_at",
+            "_sdc_deleted_at",
+        }:
+            properties_dict[col] = {
+                "type": ["null", "string"],
+                "format": "date-time",
+            }
+        for col in {"_sdc_sequence", "_sdc_table_version"}:
+            properties_dict[col] = {"type": ["null", "integer"]}
+
+  def _add_sdc_metadata_to_record(
+        self, record: dict, message: dict 
+    ) -> None:
+        """Populate metadata _sdc columns from incoming record message.
+
+        Record metadata specs documented at:
+        https://sdk.meltano.com/en/latest/implementation/record_metadata.md
+        """
+        record["_sdc_extracted_at"] = message.get("time_extracted")
+        record["_sdc_received_at"] = datetime.now().isoformat()
+        record["_sdc_batched_at"] = None #Not implemented yet 
+        record["_sdc_deleted_at"] = None #Not implemented yet
+        record["_sdc_sequence"] = int(round(time.time() * 1000))
+        record["_sdc_table_version"] = None #Not implemented yet, message.get("version")
 
   def generate_full_table_name(self, streamname, schema_name):
     table_name = streamname

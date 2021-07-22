@@ -55,6 +55,12 @@ class Target:
                 "A record for stream {}"
                 "was encountered before a corresponding schema".format(stream_name)
             )
+        #This shouldn't reference the key name here and in target, but we did it
+        add_record_metadata = self.config.get("add_record_metadata", False)
+        if add_record_metadata == True:
+            stream._add_sdc_metadata_to_record(
+                message["record"], message
+                )
 
         stream.process_record(message["record"])
         self.state = None
