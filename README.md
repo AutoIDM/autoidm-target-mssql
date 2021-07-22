@@ -24,6 +24,7 @@ password:
 trusted_connection: yes # Will use windows authentication 
 schema (Optional): will default to whatever the user's default schema is set to if this isn't set
 batch_size (Optional): Will default to 10000
+add_record_metadata (Optional): false/true , defaults to false
 A full list of supported settings and capabilities for this
 tap is available by running:
 ```
