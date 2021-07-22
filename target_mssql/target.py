@@ -40,7 +40,8 @@ class TargetMSSQL(Target):
   def streamclass(self, *args, **kwargs):
     schema=self.config.get("schema")
     batch_size=self.config.get("batch_size")
-    return MSSQLStream(conn=self.conn, schema_name=schema, batch_size=batch_size,*args, **kwargs)
+    add_record_metadata = self.config.get("add_record_metadata", False)
+    return MSSQLStream(conn=self.conn, schema_name=schema, batch_size=batch_size, add_record_metadata=add_record_metadata, *args, **kwargs)
 # CLI Execution:
 
 cli = TargetMSSQL.cli()
